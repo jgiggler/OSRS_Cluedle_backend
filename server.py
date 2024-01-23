@@ -32,7 +32,6 @@ def guessCheck():
     response = guess["guess"]
     decName = fernet.decrypt(name).decode()
     value = -1
-    keysList = []
     if response.lower() == decName.lower():
         for dict in item_count:
             if dict.get(decName) != None:
