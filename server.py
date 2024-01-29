@@ -2,17 +2,27 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from cryptography.fernet import Fernet
 
-import waitress
 import osrs
 
 items = osrs.load_items() #load all items before startup
-item_count = [{item: 0} for item in items] #create list with item name and count
+
+item_count = {}
+for item in items:
+    item_count.update({item.lower(): 0})
+# print(item_count)
+    
 
 key = Fernet.generate_key() #generate encryption key
 fernet = Fernet(key)
 
 app = Flask(__name__)
 CORS(app)
+
+@app.route("/")
+def home():
+    item = osrs.random_item(items)
+    print(item[0])
+    return jsonify({"item": item[0]})
 
 #item API Route
 @app.route("/item")
@@ -26,30 +36,26 @@ def get_random_item():
 
 #guess check API Route
 @app.route("/guesscheck", methods = ['POST'])
+
 def guessCheck():
+    
     guess = request.get_json()
+
     name = guess["name"] # encrypted
     response = guess["guess"]
-    decName = fernet.decrypt(name).decode()
-    value = -1
-    if response.lower() == decName.lower():
-        for dict in item_count:
-            if dict.get(decName) != None:
-                
-                value = dict.get(decName)
-                value += 1 # update value
-                dict[decName] = value
-        return jsonify({'correct': True, 'count': value})
+    decName = fernet.decrypt(name).decode().lower()
+    
+    if response.lower() == decName:
+        
+        if item_count.get(decName) != None:
+            item_count[decName] = item_count.get(decName) + 1 # increase value by 1
+            
+        return jsonify({'correct': True, 'count': item_count[decName]})
+    
     else:
-        for dict in item_count:
-            if dict.get(decName) != None:
-                
-                value = dict.get(decName)
-                
-                dict[decName] = value
-        return jsonify({'correct': False, 'count': value})
+        return jsonify({'correct': False, 'count': item_count[decName]})
     
 
 if __name__ == "__main__":
-    # app.run(debug=True)
-    waitress.serve(app)
+    app.run()
+    
